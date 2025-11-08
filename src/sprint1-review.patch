@@ -1,0 +1,62 @@
+From: reviewer
+Date: Sat, 08 Jun 2025 00:00:00 +0000
+Subject: [PATCH] review fixes
+
+---
+ src/App.vue | 28 ++++++++++++++++++----------
+ 1 file changed, 18 insertions(+), 10 deletions(-)
+
+diff --git a/src/App.vue b/src/App.vue
+index 9c1f3b5..e69a1c0 100644
+--- a/src/App.vue
++++ b/src/App.vue
+@@ -1,7 +1,7 @@
+ <template>
+   <div class="wrapper">
+     <h1>EUR → USD</h1>
+-    <label>EUR <input v-model="eurRaw" /></label>
++    <label>EUR <input v-model="eurRaw" inputmode="decimal" pattern="\d*\.?\d{0,2}" /></label>
+     <p v-if="error" class="error">{{ error }}</p>
+     <p>Вы ввели: <strong>{{ eurFormatted }} EUR</strong></p>
+     <p>Получится: <strong>{{ usdFormatted }} USD</strong></p>
+@@ -11,18 +11,26 @@
+ <script setup lang="ts">
+ import { ref, computed } from 'vue'
+ 
+-const eurRaw = ref('')
++const eurRaw = ref<string>('')
+ const RATE = 1.08
+ 
+-const eur = computed(() => {
+-  const n = Number(eurRaw.value)
+-  return /^\d+(\.\d{0,2})?$/.test(eurRaw.value) && !Number.isNaN(n) ? n : NaN
+-})
+-const usd = computed(() => eur.value * RATE)
++const eur = computed<number>(() => {
++  const str = eurRaw.value.trim()
++  if (str === '') return 0
++  const n = Number.parseFloat(str)
++  const valid = /^\d*\.?\d{0,2}$/.test(str) && !Number.isNaN(n) && n >= 0
++  return valid ? n : NaN
++})
++
++const usd = computed<number>(() => (Number.isNaN(eur.value) ? 0 : eur.value * RATE))
+ 
+-const eurFormatted = computed(() => eur.value.toFixed(2))
+-const usdFormatted = computed(() => usd.value.toFixed(2))
++const eurFormatted = computed<string>(() =>
++  Number.isNaN(eur.value) ? '0.00' : eur.value.toFixed(2)
++)
++const usdFormatted = computed<string>(() =>
++  Number.isNaN(usd.value) ? '0.00' : usd.value.toFixed(2)
++)
+ 
+-const error = computed(() => (Number.isNaN(eur.value) ? 'Invalid amount' : ''))
++const error = computed<string>(() =>
++  eurRaw.value !== '' && Number.isNaN(eur.value) ? 'Invalid amount' : ''
++)
+ </script>
+ 
+ <style scoped>
+-- 
+2.40.0
