@@ -1,15 +1,13 @@
-<!-- src/App.vue -->
 <template>
   <div class="wrapper">
     <h1>EUR → USD</h1>
 
     <label>
       EUR
-      <input v-model="eurRaw" inputmode="decimal" />
+      <input v-model="eurRaw" inputmode="decimal" pattern="\d*\.?\d{0,2}" @blur="formatOnBlur" />
     </label>
 
     <p v-if="error" class="error">{{ error }}</p>
-
     <p>
       Вы ввели: <strong>{{ eurFormatted }} EUR</strong>
     </p>
@@ -22,49 +20,35 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-const eurRaw = ref('')
+const eurRaw = ref<string>('')
 const RATE = 1.08
 
 /* ---------- вычисляемые ---------- */
-const eur = computed(() => {
-  const cleaned = eurRaw.value.replace(/[^\d.]/g, '')
-
-  // Убираем лишние точки (оставляем только первую)
-  const parts = cleaned.split('.')
-  const normalized = parts.length > 1 ? parts[0] + '.' + parts.slice(1).join('') : parts[0]
-
-  // Ограничиваем до 2 знаков после запятой
-  const withTwoDecimals = normalized.replace(/\.(\d{0,2}).*$/, '.$1')
-
-  // Преобразуем в число
-  const num = parseFloat(withTwoDecimals)
-
-  console.log('eurRaw:', eurRaw.value, '→ eur:', num)
-
-  // Возвращаем число или NaN если невалидный ввод
-  return isNaN(num) ? NaN : num
-}) // вернуть число или NaN
-
-const usd = computed(() => eur.value * RATE)
-
-const eurFormatted = computed(() => {
-  if (isNaN(eur.value)) return '0.00'
-  console.log(eur.value)
-  return eur.value.toFixed(2)
+const eur = computed<number>(() => {
+  const str = eurRaw.value.trim()
+  if (str === '') return 0
+  const n = Number.parseFloat(str)
+  const valid = /^\d*\.?\d{0,2}$/.test(str) && !Number.isNaN(n) && n >= 0
+  return valid ? n : NaN
 })
 
-const usdFormatted = computed(() => {
-  console.log(usd.value)
-  if (isNaN(usd.value)) return '0.00'
-  return usd.value.toFixed(2)
-})
+const usd = computed<number>(() => (Number.isNaN(eur.value) ? 0 : eur.value * RATE))
 
-const error = computed(() => {
-  if (eurRaw.value === '') return ''
-  if (isNaN(eur.value)) return 'Invalid amount'
-  if (eur.value < 0) return 'Invalid amount'
-  return ''
-})
+const eurFormatted = computed<string>(() =>
+  Number.isNaN(eur.value) ? '0.00' : eur.value.toFixed(2),
+)
+const usdFormatted = computed<string>(() =>
+  Number.isNaN(usd.value) ? '0.00' : usd.value.toFixed(2),
+)
+
+const error = computed<string>(() =>
+  eurRaw.value !== '' && Number.isNaN(eur.value) ? 'Invalid amount' : '',
+)
+
+/* ---------- UX: при потере фокуса округляем до 2 знаков ---------- */
+function formatOnBlur() {
+  if (!Number.isNaN(eur.value)) eurRaw.value = eur.value.toFixed(2)
+}
 </script>
 
 <style scoped>
@@ -72,7 +56,7 @@ const error = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   font: 16px/1.4 sans-serif;
 }
 input {
